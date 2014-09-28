@@ -469,6 +469,40 @@ static void cb_boot(struct usb_ep *ep, struct usb_request *req)
 	fastboot_tx_write_str("OKAY");
 }
 
+
+#ifdef CONFIG_FASTBOOT_FLASH
+static void cb_flash(struct usb_ep *ep, struct usb_request *req)
+{
+	char *cmd = req->buf;
+	char response[RESPONSE_LEN];
+
+	strsep(&cmd, ":");
+	if (!cmd) {
+		error("missing partition name\n");
+		fastboot_tx_write_str("FAILmissing partition name");
+		return;
+	}
+
+	strcpy(response, "FAILno flash device defined");
+#ifdef CONFIG_FASTBOOT_FLASH_MMC_DEV
+	fb_mmc_flash_write(cmd, (void *)CONFIG_USB_FASTBOOT_BUF_ADDR,
+			   download_bytes, response);
+#endif
+	fastboot_tx_write_str(response);
+}
+#endif
+
+static void cb_oem(struct usb_ep *ep, struct usb_request *req)
+{
+	char *cmd = req->buf;
+	if (strncmp("unlock", cmd + 4, 8) == 0) {
+		fastboot_tx_write_str("FAILnot implemented");
+	}
+	else {
+		fastboot_tx_write_str("FAILunknown oem command");
+	}
+}
+
 struct cmd_dispatch_info {
 	char *cmd;
 	void (*cb)(struct usb_ep *ep, struct usb_request *req);
@@ -487,6 +521,17 @@ static const struct cmd_dispatch_info cmd_dispatch_info[] = {
 	}, {
 		.cmd = "boot",
 		.cb = cb_boot,
+	},
+
+#ifdef CONFIG_FASTBOOT_FLASH
+	{
+		.cmd = "flash",
+		.cb = cb_flash,
+	},
+#endif
+	{
+		.cmd = "oem",
+		.cb = cb_oem,
 	},
 };
 
