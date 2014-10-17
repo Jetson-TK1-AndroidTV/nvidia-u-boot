@@ -12,9 +12,12 @@
 #include <asm/arch/gpio.h>
 #include <asm/arch/pinmux.h>
 
+DECLARE_GLOBAL_DATA_PTR;
+
+#include <asm/gpio.h>
 #include "pinmux-config-jetson-tk1.h"
 
-DECLARE_GLOBAL_DATA_PTR;
+#define KEY_RECOVERY_GPIO GPIO_PI1
 
 /*
  * Routine: pinmux_init
@@ -64,3 +67,39 @@ int board_eth_init(bd_t *bis)
 	return pci_eth_init(bis);
 }
 #endif /* PCI */
+
+#ifdef CONFIG_MISC_INIT_R
+int misc_init_r(void)
+{
+	int bootdelay = 2;
+	int abort = 0;
+	unsigned long ts;
+
+	/* Get GPIOs */
+	gpio_request(KEY_RECOVERY_GPIO, "recovery_btn");
+
+	printf("Checking for recovery ...\n");
+	/* delay 1000 ms */
+	while ((bootdelay > 0) && (!abort)) {
+		--bootdelay;
+		/* delay 1000 ms */
+		ts = get_timer(0);
+		do {
+			/* check for FORCE_RECOVERY button */
+			if (!gpio_get_value(KEY_RECOVERY_GPIO)) {
+				printf("\n*** RECOVERY BUTTON ***");
+				setenv("recovery", "1");
+				abort = 1;
+			}
+			udelay(10000);
+		} while (!abort && get_timer(ts) < 1000);
+		printf(".");
+	}
+	printf("\n");
+
+	/* Free GPIOs */
+	gpio_free(KEY_RECOVERY_GPIO);
+
+	return 0;
+}
+#endif
