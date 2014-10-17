@@ -29,6 +29,7 @@
 #define CONFIG_OF_SEPARATE
 #define CONFIG_OF_LIBFDT
 #define CONFIG_OF_BOARD_SETUP
+#define CONFIG_MISC_INIT_R		/* call misc_init_r during start up */
 
 #define CONFIG_SERIAL_TAG
 #define CONFIG_TEGRA_SERIAL_HIGH	0x01770000
