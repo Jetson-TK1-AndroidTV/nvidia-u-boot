@@ -70,6 +70,18 @@ void fb_mmc_flash_write(const char *cmd, void *download_buffer,
 
 	ret = get_partition_info_efi_by_name(dev_desc, cmd, &info);
 	if (ret) {
+		char env_alias_name[25 + 32 + 1]; /* strlen("fastboot_partition_alias_") + 32(part_name) + 1 */
+		char *aliased_part_name;
+
+		/* check for alias */
+		strcpy(env_alias_name, "fastboot_partition_alias_");
+		strcat(env_alias_name, cmd);
+		aliased_part_name = getenv(env_alias_name);
+		if (aliased_part_name != NULL)
+			ret = get_partition_info_efi_by_name(dev_desc, aliased_part_name, &info);
+	}
+
+	if (ret) {
 		error("cannot find partition: '%s'\n", cmd);
 		fastboot_resp("FAILcannot find partition");
 		return;
