@@ -104,6 +104,10 @@ static inline int bootm_maybe_autostart(cmd_tbl_t *cmdtp, const char *cmd)
 
 extern int do_bootz(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 
+#ifdef CONFIG_CMD_BOOTA
+extern int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
+#endif
+
 extern int common_diskboot(cmd_tbl_t *cmdtp, const char *intf, int argc,
 			   char *const argv[]);
 
