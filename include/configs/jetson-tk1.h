@@ -110,6 +110,11 @@
 #define CONFIG_CMD_NET
 #define CONFIG_CMD_DHCP
 
+/* Android fastboot support */
+#define CONFIG_CMD_FASTBOOT
+#define CONFIG_USB_FASTBOOT_BUF_SIZE	  0x40000000
+#define CONFIG_USB_FASTBOOT_BUF_ADDR	  (NV_PA_SDRAM_BASE + 0x10000000)
+
 /* Android bootimg support */
 #define CONFIG_CMD_BOOTA
 #define CONFIG_ANDROID_BOOT_IMAGE
