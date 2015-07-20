@@ -10,9 +10,21 @@
 #ifndef _CONFIG_CMD_DISTRO_BOOTCMD_H
 #define _CONFIG_CMD_DISTRO_BOOTCMD_H
 
+#ifdef CONFIG_CMD_BOOTA
+#define BOOTENV_ANDROID_BOOT_SCAN \
+		"scan_dev_for_android=" \
+			"echo Probe Android Boot; " \
+			"boota ${devtype} ${devnum}; " \
+			"echo Failed to boot Android: continuing...;\0"
+#else
+#define BOOTENV_ANDROID_BOOT_SCAN \
+		"scan_dev_for_android=;\0"
+#endif
+
 #define BOOTENV_SHARED_BLKDEV_BODY(devtypel) \
 		"if " #devtypel " dev ${devnum}; then " \
 			"setenv devtype " #devtypel "; " \
+			"run scan_dev_for_android; " \
 			"run scan_dev_for_boot; " \
 		"fi\0"
 
@@ -186,6 +198,8 @@
 			"run scan_dev_for_extlinux; "                     \
 			"run scan_dev_for_scripts; "                      \
 		"done\0"                                                  \
+	\
+	BOOTENV_ANDROID_BOOT_SCAN                                         \
 	\
 	BOOT_TARGET_DEVICES(BOOTENV_DEV)                                  \
 	\
