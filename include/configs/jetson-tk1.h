@@ -125,6 +125,7 @@
 #define CONFIG_ANDROID_BOOT_HDR_BUFF	  (NV_PA_SDRAM_BASE + 0x04000000)
 #define BOARD_EXTRA_ENV_SETTINGS \
 	"fastboot_partition_alias_boot=LNX\0" \
+	"fastboot_partition_alias_boot=DTB\0" \
 	"fastboot_partition_alias_recovery=SOS\0" \
 	"fastboot_partition_alias_system=APP\0" \
 	"fastboot_partition_alias_cache=CAC\0" \
