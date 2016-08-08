@@ -37,7 +37,6 @@
 #include <asm/arch-tegra/tegra_mmc.h>
 #include <asm/arch-tegra/mmc.h>
 #endif
-#include <asm/arch-tegra/xusb-padctl.h>
 #include <i2c.h>
 #include <spi.h>
 #include "emc.h"
@@ -163,8 +162,6 @@ int board_init(void)
 	pin_mux_nand();
 #endif
 
-	tegra_xusb_padctl_init(gd->fdt_blob);
-
 #ifdef CONFIG_TEGRA_LP0
 	/* save Sdram params to PMC 2, 4, and 24 for WB0 */
 	warmboot_save_sdram_params();
@@ -227,23 +224,6 @@ int board_late_init(void)
 			printf("No reboot-mode found\n");
 			setenv("recovery", "0");
 		}
-
-	struct pmc_ctlr *pmc = (struct pmc_ctlr *)NV_PA_PMC_BASE;
-	unsigned int scratch = readl(&pmc->pmc_scratch0);
-
-	writel(scratch & ~(1 << 30) & ~(1 << 31), &pmc->pmc_scratch0);
-	if (scratch & (1 << 30)) {
-		printf("Found reboot-mode = bootloader!\n");
-		setenv("recovery", "0");
-		do_fastboot(NULL, 0, 0, NULL);
-	}
-	else if (scratch & (1 << 31)) {
-		printf("Found reboot-mode = recovery!\n");
-		setenv("recovery", "1");
-	}
-	else {
-		printf("No reboot-mode found\n");
-		setenv("recovery", "0");
 	}
 #endif
 
@@ -303,23 +283,11 @@ void pad_init_mmc(struct mmc_host *host)
 #ifdef CONFIG_SERIAL_TAG
 void get_board_serial(struct tag_serialnr *serialnr)
 {
-	/* pass board id to kernel */
-	serialnr->high = CONFIG_TEGRA_SERIAL_HIGH;
-	serialnr->low = CONFIG_TEGRA_SERIAL_LOW;
-	/* TODO: use FDT */
-
-	debug("Config file serialnr->high = %08X, ->low = %08X\n",
-		serialnr->high, serialnr->low);
-
 	/*
 	 * Check if we can read the EEPROM serial number
 	 *  and if so, use it instead.
 	 */
-
-#if !defined(CONFIG_SERIAL_EEPROM)
-	debug("No serial EEPROM onboard, using default values\n");
-	return;
-#else
+#if defined(CONFIG_SERIAL_EEPROM)
 	uchar data_buffer[NUM_SERIAL_ID_BYTES];
 
 	i2c_set_bus_num(EEPROM_I2C_BUS);
@@ -347,9 +315,20 @@ void get_board_serial(struct tag_serialnr *serialnr)
 		serialnr->low |= (u32)data_buffer[5] << 16;
 		serialnr->low |= (u32)data_buffer[4] << 24;
 
-		debug("SEEPROM serialnr->high = %08X, ->low = %08X\n",
+		printf("SEEPROM serialnr->high = %08X, ->low = %08X\n",
 			serialnr->high, serialnr->low);
 	}
+#else
+	debug("No serial EEPROM onboard, using default values\n");
+
+	/* pass board id to kernel */
+	serialnr->high = CONFIG_TEGRA_SERIAL_HIGH;
+	serialnr->low = CONFIG_TEGRA_SERIAL_LOW;
+	/* TODO: use FDT */
+
+	debug("Config file serialnr->high = %08X, ->low = %08X\n",
+		serialnr->high, serialnr->low);
+
 #endif	/* SERIAL_EEPROM */
 }
 
@@ -373,46 +352,46 @@ void fdt_serial_tag_setup(void *blob, bd_t *bd)
 
 	get_board_serial(&serialnr);
 
-	val = serialnr.high >> 16;
+	val = (serialnr.high & 0xFF0000) >> 16;
+	val |= (serialnr.high & 0xFF000000) >> 16;
 	val = cpu_to_fdt32(val);
 	ret = fdt_setprop(blob, offset, "id", &val, sizeof(val));
-	if (ret < 0)
+	if (ret < 0) {
 		printf("ERROR: could not update id property %s.\n",
 			fdt_strerror(ret));
+	}
 
 	val = serialnr.high & 0xFFFF;
 	val = cpu_to_fdt32(val);
 	ret = fdt_setprop(blob, offset, "sku", &val, sizeof(val));
-	if (ret < 0)
+	if (ret < 0) {
 		printf("ERROR: could not update sku property %s.\n",
 			fdt_strerror(ret));
+	}
+
+	val = serialnr.low >> 24;
+	val = cpu_to_fdt32(val);
+	ret = fdt_setprop(blob, offset, "fab", &val, sizeof(val));
+	if (ret < 0) {
+		printf("ERROR: could not update fab property %s.\n",
+			fdt_strerror(ret));
+	}
 
 	val = (serialnr.low >> 16) & 0xFF;
 	val = cpu_to_fdt32(val);
-	ret = fdt_setprop(blob, offset, "fab", &val, sizeof(val));
-	if (ret < 0)
-		printf("ERROR: could not update fab property %s.\n",
-			fdt_strerror(ret));
-
-	val = (serialnr.low >> 24) + 'A';
-	val = cpu_to_fdt32(val);
 	ret = fdt_setprop(blob, offset, "major_revision", &val, sizeof(val));
-	if (ret < 0)
+	if (ret < 0) {
 		printf("ERROR: could not update major_revision property %s.\n",
 			fdt_strerror(ret));
+	}
 
 	val = (serialnr.low >> 8) & 0xFF;
 	val = cpu_to_fdt32(val);
 	ret = fdt_setprop(blob, offset, "minor_revision", &val, sizeof(val));
-	if (ret < 0)
+	if (ret < 0) {
 		printf("ERROR: could not update minor_revision property %s.\n",
 			fdt_strerror(ret));
-
-	ret = fdt_setprop(blob, offset, "name", sysinfo.board_string,
-				strlen(sysinfo.board_string));
-	if (ret < 0)
-		printf("ERROR: could not update name property %s.\n",
-			fdt_strerror(ret));
+	}
 }
 #endif  /* OF_BOARD_SETUP */
 #endif	/* SERIAL_TAG */
